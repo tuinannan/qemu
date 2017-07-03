@@ -59,3 +59,4 @@ obj-$(CONFIG_ASPEED_SOC) += aspeed_scu.o aspeed_sdmc.o
 
 obj-y += lkmc_pci_min.o
 obj-y += lkmc_min.o
+obj-y += lkmc_platform_device.o
