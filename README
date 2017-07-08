@@ -1,3 +1,14 @@
+# LKMC
+
+This is a fork of QEMU for: https://github.com/cirosantilli/linux-kernel-module-cheat
+
+Major changes:
+
+-   new devices, since out-of-tree is currently impossible?
+    https://stackoverflow.com/questions/44254790/how-to-inject-interrupts-and-modify-memory-in-qemu-from-external-asynchronous-in
+
+---
+
          QEMU README
          ===========
 
