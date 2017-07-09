@@ -1,3 +1,8 @@
+/*
+TODO this can be inserted in QEMU with -device, but I haven't managed to get
+a kernel module to interact with it.
+*/
+
 #include "qemu/osdep.h"
 #include "hw/qdev.h" /* DeviceClass, DeviceState */
 
