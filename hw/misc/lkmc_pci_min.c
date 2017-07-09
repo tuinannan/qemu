@@ -1,71 +1,73 @@
 #include "qemu/osdep.h"
 #include "hw/pci/pci.h"
 
-typedef struct {
-    PCIDevice pdev;
-    MemoryRegion mmio;
-} State;
+#define DEVICE_NAME "lkmc_pci_min"
 
-static uint64_t mmio_read(void *opaque, hwaddr addr, unsigned size)
-{
-    printf("mmio_read addr = %llx size = %x", (unsigned long long)addr, size);
-    return 0x1234567812345678;
-}
+    typedef struct {
+        PCIDevice pdev;
+        MemoryRegion mmio;
+    } State;
 
-static void mmio_write(void *opaque, hwaddr addr, uint64_t val,
-        unsigned size)
-{
-    State *state = opaque;
-
-    printf("mmio_read addr = %llx val = %llx size = %x\n",
-            (unsigned long long)addr, (unsigned long long)val, size);
-    switch (addr) {
-        case 0x0:
-            pci_set_irq(&state->pdev, 1);
-            break;
-        case 0x4:
-            pci_set_irq(&state->pdev, 0);
-            break;
+    static uint64_t mmio_read(void *opaque, hwaddr addr, unsigned size)
+    {
+        printf(DEVICE_NAME " mmio_read addr = %llx size = %x", (unsigned long long)addr, size);
+        return 0x1234567812345678;
     }
-}
 
-static const MemoryRegionOps mmio_ops = {
-    .read = mmio_read,
-    .write = mmio_write,
-    .endianness = DEVICE_NATIVE_ENDIAN,
-};
+    static void mmio_write(void *opaque, hwaddr addr, uint64_t val,
+            unsigned size)
+    {
+        State *state = opaque;
 
-static void realize(PCIDevice *pdev, Error **errp)
-{
-    State *state = DO_UPCAST(State, pdev, pdev);
+        printf(DEVICE_NAME " mmio_read addr = %llx val = %llx size = %x\n",
+                (unsigned long long)addr, (unsigned long long)val, size);
+        switch (addr) {
+            case 0x0:
+                pci_set_irq(&state->pdev, 1);
+                break;
+            case 0x4:
+                pci_set_irq(&state->pdev, 0);
+                break;
+        }
+    }
 
-    pci_config_set_interrupt_pin(pdev->config, 1);
-    memory_region_init_io(&state->mmio, OBJECT(state), &mmio_ops, state,
-            "lkmc_pci_min_mmio", 8);
-    pci_register_bar(pdev, 0, PCI_BASE_ADDRESS_SPACE_MEMORY, &state->mmio);
-}
+    static const MemoryRegionOps mmio_ops = {
+        .read = mmio_read,
+        .write = mmio_write,
+        .endianness = DEVICE_NATIVE_ENDIAN,
+    };
 
-static void class_init(ObjectClass *class, void *data)
-{
-    PCIDeviceClass *k = PCI_DEVICE_CLASS(class);
+    static void realize(PCIDevice *pdev, Error **errp)
+    {
+        State *state = DO_UPCAST(State, pdev, pdev);
 
-    k->realize = realize;
-    k->vendor_id = PCI_VENDOR_ID_QEMU;
-    k->device_id = 0x11e9;
-    k->revision = 0x0;
-    k->class_id = PCI_CLASS_OTHERS;
-}
+        pci_config_set_interrupt_pin(pdev->config, 1);
+        memory_region_init_io(&state->mmio, OBJECT(state), &mmio_ops, state,
+                DEVICE_NAME, 8);
+        pci_register_bar(pdev, 0, PCI_BASE_ADDRESS_SPACE_MEMORY, &state->mmio);
+    }
 
-static const TypeInfo type_info = {
-    .name          = "lkmc_pci_min",
-    .parent        = TYPE_PCI_DEVICE,
-    .instance_size = sizeof(State),
-    .class_init    = class_init,
-};
+    static void class_init(ObjectClass *class, void *data)
+    {
+        PCIDeviceClass *k = PCI_DEVICE_CLASS(class);
 
-static void register_types(void)
-{
-    type_register_static(&type_info);
-}
+        k->realize = realize;
+        k->vendor_id = PCI_VENDOR_ID_QEMU;
+        k->device_id = 0x11e9;
+        k->revision = 0x0;
+        k->class_id = PCI_CLASS_OTHERS;
+    }
 
-type_init(register_types)
+    static const TypeInfo type_info = {
+        .name          = DEVICE_NAME,
+        .parent        = TYPE_PCI_DEVICE,
+        .instance_size = sizeof(State),
+        .class_init    = class_init,
+    };
+
+    static void register_types(void)
+    {
+        type_register_static(&type_info);
+    }
+
+    type_init(register_types)
