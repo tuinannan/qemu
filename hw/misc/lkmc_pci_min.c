@@ -13,19 +13,19 @@ static uint64_t mmio_read(void *opaque, hwaddr addr, unsigned size)
 }
 
 static void mmio_write(void *opaque, hwaddr addr, uint64_t val,
-                unsigned size)
+        unsigned size)
 {
     State *state = opaque;
 
     printf("mmio_read addr = %llx val = %llx size = %x\n",
-    		(unsigned long long)addr, (unsigned long long)val, size);
+            (unsigned long long)addr, (unsigned long long)val, size);
     switch (addr) {
-		case 0x0:
-			pci_set_irq(&state->pdev, 1);
-		break;
-		case 0x4:
-			pci_set_irq(&state->pdev, 0);
-		break;
+        case 0x0:
+            pci_set_irq(&state->pdev, 1);
+            break;
+        case 0x4:
+            pci_set_irq(&state->pdev, 0);
+            break;
     }
 }
 
@@ -41,7 +41,7 @@ static void realize(PCIDevice *pdev, Error **errp)
 
     pci_config_set_interrupt_pin(pdev->config, 1);
     memory_region_init_io(&state->mmio, OBJECT(state), &mmio_ops, state,
-                    "lkmc_pci_min_mmio", 8);
+            "lkmc_pci_min_mmio", 8);
     pci_register_bar(pdev, 0, PCI_BASE_ADDRESS_SPACE_MEMORY, &state->mmio);
 }
 
@@ -57,10 +57,10 @@ static void class_init(ObjectClass *class, void *data)
 }
 
 static const TypeInfo type_info = {
-	.name          = "lkmc_pci_min",
-	.parent        = TYPE_PCI_DEVICE,
-	.instance_size = sizeof(State),
-	.class_init    = class_init,
+    .name          = "lkmc_pci_min",
+    .parent        = TYPE_PCI_DEVICE,
+    .instance_size = sizeof(State),
+    .class_init    = class_init,
 };
 
 static void register_types(void)
