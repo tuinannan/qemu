@@ -297,6 +297,8 @@ static void versatile_init(MachineState *machine, int board_id)
     sysbus_create_simple("pl061", 0x101e6000, pic[8]);
     sysbus_create_simple("pl061", 0x101e7000, pic[9]);
 
+	sysbus_create_simple("lkmc_platform_device", 0x101e9000, pic[18]);
+
     /* The versatile/PB actually has a modified Color LCD controller
        that includes hardware cursor support from the PL111.  */
     dev = sysbus_create_simple("pl110_versatile", 0x10120000, pic[16]);
@@ -350,6 +352,7 @@ static void versatile_init(MachineState *machine, int board_id)
     /* 0x101e6000 GPIO port 2.  */
     /* 0x101e7000 GPIO port 3.  */
     /* 0x101e8000 RTC.  */
+    /* 0x101e9000 LKMC.  */
     /* 0x101f0000 Smart card 0.  */
     /*  0x101f1000 UART0.  */
     /*  0x101f2000 UART1.  */
