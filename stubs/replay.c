@@ -76,12 +76,10 @@ uint64_t blkreplay_next_id(void)
 
 void replay_mutex_lock(void)
 {
-    abort();
 }
 
 void replay_mutex_unlock(void)
 {
-    abort();
 }
 
 bool replay_mutex_locked(void)
