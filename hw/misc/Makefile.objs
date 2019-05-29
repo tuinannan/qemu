@@ -84,3 +84,4 @@ obj-$(CONFIG_MAC_VIA) += mac_via.o
 common-obj-$(CONFIG_GRLIB) += grlib_ahb_apb_pnp.o
 
 obj-y += lkmc_min.o
+obj-y += lkmc_pci_min.o
