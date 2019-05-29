@@ -85,3 +85,4 @@ common-obj-$(CONFIG_GRLIB) += grlib_ahb_apb_pnp.o
 
 obj-y += lkmc_min.o
 obj-y += lkmc_pci_min.o
+obj-y += lkmc_platform_device.o
