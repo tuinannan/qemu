@@ -388,6 +388,7 @@ static void arm_sysctl_write(void *opaque, hwaddr offset,
 
     switch (offset) {
     case 0x08: /* LED */
+        /*printf("LED val = %llx\n", (unsigned long long)val);*/
         s->leds = val;
         break;
     case 0x0c: /* OSC0 */

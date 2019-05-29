@@ -80,3 +80,4 @@ obj-$(CONFIG_NRF51_SOC) += nrf51_rng.o
 
 obj-y += lkmc_min.o
 obj-y += lkmc_pci_min.o
+obj-y += lkmc_platform_device.o
