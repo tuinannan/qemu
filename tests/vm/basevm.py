@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 # VM testing base class
 #
@@ -12,7 +11,6 @@
 # the COPYING file in the top-level directory.
 #
 
-from __future__ import print_function
 import os
 import re
 import sys
@@ -21,7 +19,7 @@ import logging
 import time
 import datetime
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'python'))
-from qemu import kvm_available
+from qemu.accel import kvm_available
 from qemu.machine import QEMUMachine
 import subprocess
 import hashlib
@@ -151,6 +149,11 @@ class BaseVM(object):
 
     def build_image(self, img):
         raise NotImplementedError
+
+    def exec_qemu_img(self, *args):
+        cmd = [os.environ.get("QEMU_IMG", "qemu-img")]
+        cmd.extend(list(args))
+        subprocess.check_call(cmd)
 
     def add_source_dir(self, src_dir):
         name = "data-" + hashlib.sha1(src_dir.encode("utf-8")).hexdigest()[:5]

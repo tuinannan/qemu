@@ -74,8 +74,7 @@ static int get_pte(dma_addr_t baseaddr, uint32_t index, uint64_t *pte,
     dma_addr_t addr = baseaddr + index * sizeof(*pte);
 
     /* TODO: guarantee 64-bit single-copy atomicity */
-    ret = dma_memory_read(&address_space_memory, addr,
-                          (uint8_t *)pte, sizeof(*pte));
+    ret = dma_memory_read(&address_space_memory, addr, pte, sizeof(*pte));
 
     if (ret != MEMTX_OK) {
         info->type = SMMU_PTW_ERR_WALK_EABT;
@@ -461,7 +460,7 @@ static void smmu_base_class_init(ObjectClass *klass, void *data)
     DeviceClass *dc = DEVICE_CLASS(klass);
     SMMUBaseClass *sbc = ARM_SMMU_CLASS(klass);
 
-    dc->props = smmu_dev_properties;
+    device_class_set_props(dc, smmu_dev_properties);
     device_class_set_parent_realize(dc, smmu_base_realize,
                                     &sbc->parent_realize);
     dc->reset = smmu_base_reset;
