@@ -26,7 +26,22 @@
 #include "qemu/atomic128.h"
 #include "tcg/tcg.h"
 
-void helper_cmpxchg8b_unlocked(CPUX86State *env, target_ulong a0)
+void helper_ldd(CPUX86State *env, target_ulong a0, uint64_t num)
+{
+    /*
+    FILE *fp;
+    fp =fopen("out", "a");
+    fprintf(fp, "%"PRIu64"aaa\n", a0);
+    fclose(fp);
+    */
+    cpu_ldd_data(env, a0, num);
+}
+
+void helper_count_ins(CPUX86State *env)
+{
+    cpu_count_ins(env);
+}
+void helper_cmpxchg8b_unlocked(CPUX86State *env, target_ulong a0, uint64_t num, uint64_t op_num)
 {
     uintptr_t ra = GETPC();
     uint64_t oldv, cmpv, newv;
@@ -37,7 +52,9 @@ void helper_cmpxchg8b_unlocked(CPUX86State *env, target_ulong a0)
     cmpv = deposit64(env->regs[R_EAX], 32, 32, env->regs[R_EDX]);
     newv = deposit64(env->regs[R_EBX], 32, 32, env->regs[R_ECX]);
 
-    oldv = cpu_ldq_data_ra(env, a0, ra);
+    oldv = cpu_ldq_data_ra(env, a0, ra, num, op_num);
+    
+    
     newv = (cmpv == oldv ? newv : oldv);
     /* always do the store */
     cpu_stq_data_ra(env, a0, newv, ra);
@@ -52,7 +69,7 @@ void helper_cmpxchg8b_unlocked(CPUX86State *env, target_ulong a0)
     CC_SRC = eflags;
 }
 
-void helper_cmpxchg8b(CPUX86State *env, target_ulong a0)
+void helper_cmpxchg8b(CPUX86State *env, target_ulong a0, uint64_t num, uint64_t op_num)
 {
 #ifdef CONFIG_ATOMIC64
     uint64_t oldv, cmpv, newv;
@@ -94,7 +111,7 @@ void helper_cmpxchg8b(CPUX86State *env, target_ulong a0)
 }
 
 #ifdef TARGET_X86_64
-void helper_cmpxchg16b_unlocked(CPUX86State *env, target_ulong a0)
+void helper_cmpxchg16b_unlocked(CPUX86State *env, target_ulong a0, uint64_t num, uint64_t op_num)
 {
     uintptr_t ra = GETPC();
     Int128 oldv, cmpv, newv;
@@ -110,8 +127,9 @@ void helper_cmpxchg16b_unlocked(CPUX86State *env, target_ulong a0)
     cmpv = int128_make128(env->regs[R_EAX], env->regs[R_EDX]);
     newv = int128_make128(env->regs[R_EBX], env->regs[R_ECX]);
 
-    o0 = cpu_ldq_data_ra(env, a0 + 0, ra);
-    o1 = cpu_ldq_data_ra(env, a0 + 8, ra);
+
+    o0 = cpu_ldq_data_ra(env, a0 + 0, num, op_num, ra);
+    o1 = cpu_ldq_data_ra(env, a0 + 8,  num, op_num, ra);
 
     oldv = int128_make128(o0, o1);
     success = int128_eq(oldv, cmpv);
@@ -132,7 +150,7 @@ void helper_cmpxchg16b_unlocked(CPUX86State *env, target_ulong a0)
     CC_SRC = eflags;
 }
 
-void helper_cmpxchg16b(CPUX86State *env, target_ulong a0)
+void helper_cmpxchg16b(CPUX86State *env, target_ulong a0, uint64_t num, uint64_t op_num)
 {
     uintptr_t ra = GETPC();
 
@@ -163,12 +181,12 @@ void helper_cmpxchg16b(CPUX86State *env, target_ulong a0)
 }
 #endif
 
-void helper_boundw(CPUX86State *env, target_ulong a0, int v)
+void helper_boundw(CPUX86State *env, target_ulong a0, int v, uint64_t num, uint64_t num_op)
 {
     int low, high;
 
-    low = cpu_ldsw_data_ra(env, a0, GETPC());
-    high = cpu_ldsw_data_ra(env, a0 + 2, GETPC());
+    low = cpu_ldsw_data_ra(env, a0, num, num_op, GETPC());
+    high = cpu_ldsw_data_ra(env, a0 + 2, num, num_op, GETPC());
     v = (int16_t)v;
     if (v < low || v > high) {
         if (env->hflags & HF_MPX_EN_MASK) {
@@ -178,12 +196,12 @@ void helper_boundw(CPUX86State *env, target_ulong a0, int v)
     }
 }
 
-void helper_boundl(CPUX86State *env, target_ulong a0, int v)
+void helper_boundl(CPUX86State *env, target_ulong a0, int v, uint64_t num, uint64_t num_op)
 {
     int low, high;
 
-    low = cpu_ldl_data_ra(env, a0, GETPC());
-    high = cpu_ldl_data_ra(env, a0 + 4, GETPC());
+    low = cpu_ldl_data_ra(env, a0, num, num_op, GETPC());
+    high = cpu_ldl_data_ra(env, a0 + 4, num, num_op, GETPC());
     if (v < low || v > high) {
         if (env->hflags & HF_MPX_EN_MASK) {
             env->bndcs_regs.sts = 0;

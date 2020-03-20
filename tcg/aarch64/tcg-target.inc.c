@@ -1704,7 +1704,7 @@ static void tcg_out_tlb_read(TCGContext *s, TCGReg addr_reg, MemOp opc,
 
     /* If not equal, we jump to the slow path. */
     *label_ptr = s->code_ptr;
-    tcg_out_insn(s, 3202, B_C, TCG_COND_NE, 0);
+    tcg_out_insn(s, 3202, B_C, TCG_COND_GEU, 0);
 }
 
 #endif /* CONFIG_SOFTMMU */

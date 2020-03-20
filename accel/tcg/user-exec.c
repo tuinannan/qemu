@@ -741,6 +741,10 @@ uint32_t cpu_ldub_data(CPUArchState *env, abi_ptr ptr)
     uint32_t ret;
     uint16_t meminfo = trace_mem_get_info(MO_UB, MMU_USER_IDX, false);
 
+    FILE *p;
+    p = fopen("out", "a");
+    fprintf(p, "zzz\n");
+    fclose(p); 
     trace_guest_mem_before_exec(env_cpu(env), ptr, meminfo);
     ret = ldub_p(g2h(ptr));
     qemu_plugin_vcpu_mem_cb(env_cpu(env), ptr, meminfo);

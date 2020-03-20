@@ -86,6 +86,14 @@ uint64_t HELPER(divu_i64)(uint64_t arg1, uint64_t arg2)
     return arg1 / arg2;
 }
 
+uint64_t HELPER(ldd_i64)(uint64_t arg)
+{
+    FILE *fp;
+    fp = fopen("out", "w");
+    fprintf(fp, "%"PRIu64"aa\n", arg);
+    return arg;
+}
+
 uint64_t HELPER(remu_i64)(uint64_t arg1, uint64_t arg2)
 {
     return arg1 % arg2;

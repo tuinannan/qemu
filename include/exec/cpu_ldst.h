@@ -101,12 +101,15 @@ uint64_t cpu_ldq_data(CPUArchState *env, abi_ptr ptr);
 int cpu_ldsb_data(CPUArchState *env, abi_ptr ptr);
 int cpu_ldsw_data(CPUArchState *env, abi_ptr ptr);
 
-uint32_t cpu_ldub_data_ra(CPUArchState *env, abi_ptr ptr, uintptr_t retaddr);
-uint32_t cpu_lduw_data_ra(CPUArchState *env, abi_ptr ptr, uintptr_t retaddr);
-uint32_t cpu_ldl_data_ra(CPUArchState *env, abi_ptr ptr, uintptr_t retaddr);
-uint64_t cpu_ldq_data_ra(CPUArchState *env, abi_ptr ptr, uintptr_t retaddr);
-int cpu_ldsb_data_ra(CPUArchState *env, abi_ptr ptr, uintptr_t retaddr);
-int cpu_ldsw_data_ra(CPUArchState *env, abi_ptr ptr, uintptr_t retaddr);
+uint32_t cpu_ldub_data_ra(CPUArchState *env, abi_ptr ptr, uint64_t num, uint64_t num_op, uintptr_t retaddr);
+uint32_t cpu_lduw_data_ra(CPUArchState *env, abi_ptr ptr, uint64_t num, uint64_t num_op, uintptr_t retaddr);
+uint32_t cpu_ldl_data_ra(CPUArchState *env, abi_ptr ptr, uint64_t num, uint64_t num_op, uintptr_t retaddr);
+uint64_t cpu_ldq_data_ra(CPUArchState *env, abi_ptr ptr, uint64_t num, uint64_t num_op, uintptr_t retaddr);
+int cpu_ldsb_data_ra(CPUArchState *env, abi_ptr ptr, uint64_t num, uint64_t num_op, uintptr_t retaddr);
+int cpu_ldsw_data_ra(CPUArchState *env, abi_ptr ptr, uint64_t num, uint64_t num_op, uintptr_t retaddr);
+//yanan
+void cpu_ldd_data(CPUArchState *env, abi_ptr ptr, uint64_t num);
+void cpu_count_ins(CPUArchState *env);
 
 void cpu_stb_data(CPUArchState *env, abi_ptr ptr, uint32_t val);
 void cpu_stw_data(CPUArchState *env, abi_ptr ptr, uint32_t val);
@@ -242,13 +245,13 @@ static inline CPUTLBEntry *tlb_entry(CPUArchState *env, uintptr_t mmu_idx,
 }
 
 uint32_t cpu_ldub_mmuidx_ra(CPUArchState *env, abi_ptr addr,
-                            int mmu_idx, uintptr_t ra);
+                            int mmu_idx, uint64_t num, uint64_t num_op, uintptr_t ra);
 uint32_t cpu_lduw_mmuidx_ra(CPUArchState *env, abi_ptr addr,
-                            int mmu_idx, uintptr_t ra);
+                            int mmu_idx, uint64_t num, uint64_t num_op, uintptr_t ra);
 uint32_t cpu_ldl_mmuidx_ra(CPUArchState *env, abi_ptr addr,
-                           int mmu_idx, uintptr_t ra);
+                           int mmu_idx, uint64_t num, uint64_t num_op, uintptr_t ra);
 uint64_t cpu_ldq_mmuidx_ra(CPUArchState *env, abi_ptr addr,
-                           int mmu_idx, uintptr_t ra);
+                           int mmu_idx, uint64_t num, uint64_t num_op,  uintptr_t ra);
 
 int cpu_ldsb_mmuidx_ra(CPUArchState *env, abi_ptr addr,
                        int mmu_idx, uintptr_t ra);

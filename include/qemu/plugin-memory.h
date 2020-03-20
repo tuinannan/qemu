@@ -6,8 +6,12 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
+#include "exec/hwaddr.h"
 #ifndef _PLUGIN_MEMORY_H_
 #define _PLUGIN_MEMORY_H_
+
+typedef uint64_t target_ulong;
+
 
 struct qemu_plugin_hwaddr {
     bool is_io;
