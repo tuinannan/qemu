@@ -81,6 +81,7 @@ QEMU_BUILD_BUG_ON(NB_MMU_MODES > 16);
 #define ALL_MMUIDX_BITS ((1 << NB_MMU_MODES) - 1)
 
 static uint64_t num_g = 0;
+static uint64_t num_g_f = 0;
 static inline size_t tlb_n_entries(CPUTLBDescFast *fast)
 {
     return (fast->mask >> CPU_TLB_ENTRY_BITS) + 1;
@@ -1756,7 +1757,7 @@ tcg_target_ulong helper_be_ldsl_mmu(CPUArchState *env, target_ulong addr,
 
 static inline uint64_t cpu_load_helper(CPUArchState *env, abi_ptr addr,
                                        int mmu_idx, uintptr_t retaddr,
-                                       MemOp op, FullLoadHelper *full_load, uint64_t num, uint64_t num_op)
+                                       MemOp op, FullLoadHelper *full_load)
 {
     uint16_t meminfo;
     TCGMemOpIdx oi;
@@ -1782,7 +1783,11 @@ static inline uint64_t cpu_load_helper(CPUArchState *env, abi_ptr addr,
    // {
         //uint64_t a = num - num_g;
         //num_g = num;
-        trace_memory_ldd(env_cpu(env)->cpu_index, qemu_ram_addr_from_host_nofail((void*)(addr+(tlb_entry(env, mmu_idx, addr))->addend)), num_g);
+        if(num_g_f > 0x117000000)
+        {
+        trace_memory_ldd(env_cpu(env)->cpu_index, 1, qemu_ram_addr_from_host_nofail((void*)(addr+(tlb_entry(env, mmu_idx, addr))->addend)), num_g);
+        num_g = 0;
+        }
    // }
    // }
 
@@ -1794,23 +1799,49 @@ static inline uint64_t cpu_load_helper(CPUArchState *env, abi_ptr addr,
 //yanan
 void cpu_ldd_data(CPUArchState *env, abi_ptr addr, uint64_t num)
 {
-    //uint64_t a = 1;
-    //trace_memory_ldd(env_cpu(env)->cpu_index, addr, num);  
     int mmu_idx = cpu_mmu_index(env, false);
     //uintptr_t index = tlb_index(env, mmu_idx, addr);
     CPUTLBEntry *entry = tlb_entry(env, mmu_idx, addr);
     target_ulong tlb_addr = entry->addr_read;
     if(!tlb_hit(tlb_addr, addr))
     {
-      // a = 3;
-      // trace_memory_ldd(env_cpu(env), addr,a);
-       //
-       
         FILE *fp;
         fp =fopen("out", "a");
-        fprintf(fp, "tlb_hit%"PRIu64"\n", addr);
+        fprintf(fp, "tlb miss read\n");
         fclose(fp);
         
+    }
+    else 
+    {
+        if(num_g_f > 0x117000000)
+        {
+        trace_memory_ldd(env_cpu(env)->cpu_index, 1, qemu_ram_addr_from_host_nofail((void*)(addr+(entry->addend))), num_g);
+        num_g = 0;
+        }
+    }
+    
+}
+void cpu_std_data(CPUArchState *env, abi_ptr addr, uint64_t num)
+{
+    int mmu_idx = cpu_mmu_index(env, false);
+    //uintptr_t index = tlb_index(env, mmu_idx, addr);
+    CPUTLBEntry *entry = tlb_entry(env, mmu_idx, addr);
+    target_ulong tlb_addr = entry->addr_read;
+    if(!tlb_hit(tlb_addr, addr))
+    {
+        FILE *fp;
+        fp =fopen("out", "a");
+        fprintf(fp, "tlb miss write\n");
+        fclose(fp);
+        
+    }
+    else 
+    {
+        if(num_g_f > 0x117000000)
+        {
+        trace_memory_ldd(env_cpu(env)->cpu_index,0, qemu_ram_addr_from_host_nofail((void*)(addr+(entry->addend))), num_g);
+        num_g = 0;
+        }
     }
     
 }
@@ -1819,10 +1850,11 @@ void cpu_count_ins(CPUArchState *env)
 {
 
     num_g ++;
+    num_g_f ++;
 
 }
 uint32_t cpu_ldub_mmuidx_ra(CPUArchState *env, abi_ptr addr,
-                            int mmu_idx, uint64_t num, uint64_t num_op, uintptr_t ra)
+                            int mmu_idx,   uintptr_t ra)
 {
     /*
     if(num_op == 100)
@@ -1833,18 +1865,18 @@ uint32_t cpu_ldub_mmuidx_ra(CPUArchState *env, abi_ptr addr,
         fclose(fp);
     }
     */
-    return cpu_load_helper(env, addr, mmu_idx, ra, MO_UB, full_ldub_mmu, num, num_op);
+    return cpu_load_helper(env, addr, mmu_idx, ra, MO_UB, full_ldub_mmu);
 }
 
 int cpu_ldsb_mmuidx_ra(CPUArchState *env, abi_ptr addr, int mmu_idx, 
                        uintptr_t ra)
 {
     return (int8_t)cpu_load_helper(env, addr, mmu_idx, ra, MO_SB,
-                                   full_ldub_mmu, 0, 0);
+                                   full_ldub_mmu);
 }
 
 uint32_t cpu_lduw_mmuidx_ra(CPUArchState *env, abi_ptr addr,
-                            int mmu_idx, uint64_t num, uint64_t num_op, uintptr_t ra)
+                            int mmu_idx,   uintptr_t ra)
 {
     /*
     if(num_op ==100)
@@ -1856,8 +1888,8 @@ uint32_t cpu_lduw_mmuidx_ra(CPUArchState *env, abi_ptr addr,
     }
     */
     return cpu_load_helper(env, addr, mmu_idx, ra, MO_TEUW,
-                           MO_TE == MO_LE
-                           ? full_le_lduw_mmu : full_be_lduw_mmu, num, num_op);
+                          MO_TE == MO_LE
+                           ? full_le_lduw_mmu : full_be_lduw_mmu  );
 }
 
 int cpu_ldsw_mmuidx_ra(CPUArchState *env, abi_ptr addr,
@@ -1865,11 +1897,11 @@ int cpu_ldsw_mmuidx_ra(CPUArchState *env, abi_ptr addr,
 {
     return (int16_t)cpu_load_helper(env, addr, mmu_idx, ra, MO_TESW,
                                     MO_TE == MO_LE
-                                    ? full_le_lduw_mmu : full_be_lduw_mmu, 0, 0);
+                                    ? full_le_lduw_mmu : full_be_lduw_mmu);
 }
 
 uint32_t cpu_ldl_mmuidx_ra(CPUArchState *env, abi_ptr addr,
-                           int mmu_idx, uint64_t num, uint64_t num_op, uintptr_t ra)
+                           int mmu_idx,   uintptr_t ra)
 {
     /*
     if(num_op ==100)
@@ -1882,11 +1914,11 @@ uint32_t cpu_ldl_mmuidx_ra(CPUArchState *env, abi_ptr addr,
     */
     return cpu_load_helper(env, addr, mmu_idx, ra, MO_TEUL,
                            MO_TE == MO_LE
-                           ? full_le_ldul_mmu : full_be_ldul_mmu, num, num_op);
+                           ? full_le_ldul_mmu : full_be_ldul_mmu);
 }
 
 uint64_t cpu_ldq_mmuidx_ra(CPUArchState *env, abi_ptr addr,
-                           int mmu_idx, uint64_t num, uint64_t num_op, uintptr_t ra)
+                           int mmu_idx,   uintptr_t ra)
 {
     /*
     if(num_op ==100)
@@ -1899,75 +1931,75 @@ uint64_t cpu_ldq_mmuidx_ra(CPUArchState *env, abi_ptr addr,
     */
     return cpu_load_helper(env, addr, mmu_idx, ra, MO_TEQ,
                            MO_TE == MO_LE
-                           ? helper_le_ldq_mmu : helper_be_ldq_mmu, num, num_op);
+                          ? helper_le_ldq_mmu : helper_be_ldq_mmu);
 }
 
-uint32_t cpu_ldub_data_ra(CPUArchState *env, target_ulong ptr, uint64_t num, uint64_t num_op,
+uint32_t cpu_ldub_data_ra(CPUArchState *env, target_ulong ptr,  
                           uintptr_t retaddr)
 {
     //return cpu_ldub_mmuidx_ra(env, ptr, cpu_mmu_index(env, false), retaddr);
-    return cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_UB, full_ldub_mmu, num, num_op);
+    return cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_UB, full_ldub_mmu );
 }
 
-int cpu_ldsb_data_ra(CPUArchState *env, target_ulong ptr, uint64_t num, uint64_t num_op, uintptr_t retaddr)
+int cpu_ldsb_data_ra(CPUArchState *env, target_ulong ptr,   uintptr_t retaddr)
 {
     //return cpu_ldsb_mmuidx_ra(env, ptr, cpu_mmu_index(env, false), retaddr);
-    return (int8_t)cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_SB, full_ldub_mmu, num, num_op);
+    return (int8_t)cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_SB, full_ldub_mmu);
 }
 
-uint32_t cpu_lduw_data_ra(CPUArchState *env, target_ulong ptr, uint64_t num, uint64_t num_op,
+uint32_t cpu_lduw_data_ra(CPUArchState *env, target_ulong ptr,  
                           uintptr_t retaddr)
 {
     //return cpu_lduw_mmuidx_ra(env, ptr, cpu_mmu_index(env, false), retaddr);
-    return cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_TEUW, MO_TE == MO_LE?  full_le_lduw_mmu : full_be_lduw_mmu, num, num_op);
+    return cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_TEUW, MO_TE == MO_LE?  full_le_lduw_mmu : full_be_lduw_mmu);
 }
 
-int cpu_ldsw_data_ra(CPUArchState *env, target_ulong ptr, uint64_t num, uint64_t num_op,  uintptr_t retaddr)
+int cpu_ldsw_data_ra(CPUArchState *env, target_ulong ptr,    uintptr_t retaddr)
 {
     //return cpu_ldsw_mmuidx_ra(env, ptr, cpu_mmu_index(env, false), retaddr);
-    return cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_TESW, MO_TE == MO_LE?  full_le_lduw_mmu : full_be_lduw_mmu, num, num_op);
+    return cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_TESW, MO_TE == MO_LE?  full_le_lduw_mmu : full_be_lduw_mmu);
 }
 
-uint32_t cpu_ldl_data_ra(CPUArchState *env, target_ulong ptr, uint64_t num, uint64_t num_op, uintptr_t retaddr)
+uint32_t cpu_ldl_data_ra(CPUArchState *env, target_ulong ptr,   uintptr_t retaddr)
 {
     //return cpu_ldl_mmuidx_ra(env, ptr, cpu_mmu_index(env, false), retaddr);
-    return cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_TEUL, MO_TE == MO_LE?  full_le_ldul_mmu : full_be_ldul_mmu, num, num_op);
+    return cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_TEUL, MO_TE == MO_LE?  full_le_ldul_mmu : full_be_ldul_mmu);
 }
 
-uint64_t cpu_ldq_data_ra(CPUArchState *env, target_ulong ptr, uint64_t num, uint64_t num_op, uintptr_t retaddr)
+uint64_t cpu_ldq_data_ra(CPUArchState *env, target_ulong ptr,   uintptr_t retaddr)
 {
     //return cpu_ldq_mmuidx_ra(env, ptr, cpu_mmu_index(env, false), retaddr);
-    return cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_TEQ, MO_TE == MO_LE?  helper_le_ldq_mmu : helper_be_ldq_mmu, num, num_op);
+    return cpu_load_helper(env, ptr, cpu_mmu_index(env, false), retaddr, MO_TEQ, MO_TE == MO_LE?  helper_le_ldq_mmu : helper_be_ldq_mmu);
 }
 
 uint32_t cpu_ldub_data(CPUArchState *env, target_ulong ptr)
 {
-    return cpu_ldub_data_ra(env, ptr, 0, 0, 0);
+    return cpu_ldub_data_ra(env, ptr, 0);
 }
 
 int cpu_ldsb_data(CPUArchState *env, target_ulong ptr)
 {
-    return cpu_ldsb_data_ra(env, ptr, 0,0,0);
+    return cpu_ldsb_data_ra(env, ptr,  0);
 }
 
 uint32_t cpu_lduw_data(CPUArchState *env, target_ulong ptr)
 {
-    return cpu_lduw_data_ra(env, ptr, 0,0,0);
+    return cpu_lduw_data_ra(env, ptr,  0);
 }
 
 int cpu_ldsw_data(CPUArchState *env, target_ulong ptr)
 {
-    return cpu_ldsw_data_ra(env, ptr, 0,0,0);
+    return cpu_ldsw_data_ra(env, ptr,  0);
 }
 
 uint32_t cpu_ldl_data(CPUArchState *env, target_ulong ptr)
 {
-    return cpu_ldl_data_ra(env, ptr, 0,0,0);
+    return cpu_ldl_data_ra(env, ptr,  0);
 }
 
 uint64_t cpu_ldq_data(CPUArchState *env, target_ulong ptr)
 {
-    return cpu_ldq_data_ra(env, ptr, 0,0,0);
+    return cpu_ldq_data_ra(env, ptr,  0);
 }
 
 /*
@@ -2215,6 +2247,11 @@ cpu_store_helper(CPUArchState *env, target_ulong addr, uint64_t val,
 
     oi = make_memop_idx(op, mmu_idx);
     store_helper(env, addr, val, oi, retaddr, op);
+        if(num_g_f > 0x117000000)
+        {
+        trace_memory_ldd(env_cpu(env)->cpu_index,0, qemu_ram_addr_from_host_nofail((void*)(addr+(tlb_entry(env, mmu_idx, addr))->addend)), num_g);
+        num_g = 0;
+        }
 
     qemu_plugin_vcpu_mem_cb(env_cpu(env), addr, meminfo);
 }

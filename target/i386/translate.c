@@ -152,7 +152,7 @@ static void gen_jmp_tb(DisasContext *s, target_ulong eip, int tb_num);
 static void gen_op(DisasContext *s1, int op, MemOp ot, int d);
 
 static int num_ins;
-static int num_op = 0;
+//static int num_op = 0;
 
 /* i386 arith/logic operations */
 enum {
@@ -435,6 +435,7 @@ static inline void gen_op_ld_v(DisasContext *s, int idx, TCGv t0, TCGv a0)
 static inline void gen_op_st_v(DisasContext *s, int idx, TCGv t0, TCGv a0)
 {
     tcg_gen_qemu_st_tl(t0, a0, s->mem_index, idx | MO_LE);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
 }
 
 static inline void gen_op_st_rm_T0_A0(DisasContext *s, int idx, int d)
@@ -624,13 +625,13 @@ static void gen_check_io(DisasContext *s, MemOp ot, target_ulong cur_eip,
         tcg_gen_trunc_tl_i32(s->tmp2_i32, s->T0);
         switch (ot) {
         case MO_8:
-            gen_helper_check_iob(cpu_env, s->tmp2_i32, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+            gen_helper_check_iob(cpu_env, s->tmp2_i32 );
             break;
         case MO_16:
-            gen_helper_check_iow(cpu_env, s->tmp2_i32, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+            gen_helper_check_iow(cpu_env, s->tmp2_i32 );
             break;
         case MO_32:
-            gen_helper_check_iol(cpu_env, s->tmp2_i32, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+            gen_helper_check_iol(cpu_env, s->tmp2_i32 );
             break;
         default:
             tcg_abort();
@@ -2319,7 +2320,7 @@ static void gen_movl_seg_T0(DisasContext *s, int seg_reg)
 {
     if (s->pe && !s->vm86) {
         tcg_gen_trunc_tl_i32(s->tmp2_i32, s->T0);
-        gen_helper_load_seg(cpu_env, tcg_const_i32(seg_reg), s->tmp2_i32, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+        gen_helper_load_seg(cpu_env, tcg_const_i32(seg_reg), s->tmp2_i32 );
         /* abort translation because the addseg value may change or
            because ss32 may change. For R_SS, translation must always
            stop as a special handling must be done to disable hardware
@@ -3839,6 +3840,7 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 } else {
                     tcg_gen_qemu_st_tl(cpu_regs[reg], s->A0,
                                        s->mem_index, ot | MO_BE);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                 }
                 break;
 
@@ -4170,6 +4172,7 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                     } else {
                         tcg_gen_qemu_st_tl(s->T0, s->A0,
                                            s->mem_index, MO_UB);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                     }
                     break;
                 case 0x15: /* pextrw */
@@ -4180,6 +4183,7 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                     } else {
                         tcg_gen_qemu_st_tl(s->T0, s->A0,
                                            s->mem_index, MO_LEUW);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                     }
                     break;
                 case 0x16:
@@ -4192,6 +4196,7 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                         } else {
                             tcg_gen_qemu_st_i32(s->tmp2_i32, s->A0,
                                                 s->mem_index, MO_LEUL);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                         }
                     } else { /* pextrq */
 #ifdef TARGET_X86_64
@@ -4203,6 +4208,7 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                         } else {
                             tcg_gen_qemu_st_i64(s->tmp1_i64, s->A0,
                                                 s->mem_index, MO_LEQ);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                         }
 #else
                         goto illegal_op;
@@ -4217,6 +4223,7 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                     } else {
                         tcg_gen_qemu_st_tl(s->T0, s->A0,
                                            s->mem_index, MO_LEUL);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                     }
                     break;
                 case 0x20: /* pinsrb */
@@ -5099,7 +5106,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 tcg_gen_trunc_tl_i32(s->tmp2_i32, s->T0);
                 gen_helper_lcall_protected(cpu_env, s->tmp2_i32, s->T1,
                                            tcg_const_i32(dflag - 1),
-                                           tcg_const_tl(s->pc - s->cs_base), tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                                           tcg_const_tl(s->pc - s->cs_base) );
             } else {
                 tcg_gen_trunc_tl_i32(s->tmp2_i32, s->T0);
                 gen_helper_lcall_real(cpu_env, s->tmp2_i32, s->T1,
@@ -5125,7 +5132,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             if (s->pe && !s->vm86) {
                 tcg_gen_trunc_tl_i32(s->tmp2_i32, s->T0);
                 gen_helper_ljmp_protected(cpu_env, s->tmp2_i32, s->T1,
-                                          tcg_const_tl(s->pc - s->cs_base), tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                                          tcg_const_tl(s->pc - s->cs_base) );
             } else {
                 gen_op_movl_seg_T0_vm(s, R_CS);
                 gen_op_jmp_v(s->T1);
@@ -5369,9 +5376,9 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 gen_lea_modrm(env, s, modrm);
                 if ((s->prefix & PREFIX_LOCK) &&
                     (tb_cflags(s->base.tb) & CF_PARALLEL)) {
-                    gen_helper_cmpxchg16b(cpu_env, s->A0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                    gen_helper_cmpxchg16b(cpu_env, s->A0 );
                 } else {
-                    gen_helper_cmpxchg16b_unlocked(cpu_env, s->A0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                    gen_helper_cmpxchg16b_unlocked(cpu_env, s->A0 );
                 }
                 set_cc_op(s, CC_OP_EFLAGS);
                 break;
@@ -5383,9 +5390,9 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             gen_lea_modrm(env, s, modrm);
             if ((s->prefix & PREFIX_LOCK) &&
                 (tb_cflags(s->base.tb) & CF_PARALLEL)) {
-                gen_helper_cmpxchg8b(cpu_env, s->A0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_cmpxchg8b(cpu_env, s->A0 );
             } else {
-                gen_helper_cmpxchg8b_unlocked(cpu_env, s->A0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_cmpxchg8b_unlocked(cpu_env, s->A0 );
             }
             set_cc_op(s, CC_OP_EFLAGS);
             break;
@@ -5963,17 +5970,20 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                         gen_helper_fisttl_ST0(s->tmp2_i32, cpu_env);
                         tcg_gen_qemu_st_i32(s->tmp2_i32, s->A0,
                                             s->mem_index, MO_LEUL);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                         break;
                     case 2:
                         gen_helper_fisttll_ST0(s->tmp1_i64, cpu_env);
                         tcg_gen_qemu_st_i64(s->tmp1_i64, s->A0,
                                             s->mem_index, MO_LEQ);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                         break;
                     case 3:
                     default:
                         gen_helper_fistt_ST0(s->tmp2_i32, cpu_env);
                         tcg_gen_qemu_st_i32(s->tmp2_i32, s->A0,
                                             s->mem_index, MO_LEUW);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                         break;
                     }
                     gen_helper_fpop(cpu_env);
@@ -5984,22 +5994,26 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                         gen_helper_fsts_ST0(s->tmp2_i32, cpu_env);
                         tcg_gen_qemu_st_i32(s->tmp2_i32, s->A0,
                                             s->mem_index, MO_LEUL);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                         break;
                     case 1:
                         gen_helper_fistl_ST0(s->tmp2_i32, cpu_env);
                         tcg_gen_qemu_st_i32(s->tmp2_i32, s->A0,
                                             s->mem_index, MO_LEUL);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                         break;
                     case 2:
                         gen_helper_fstl_ST0(s->tmp1_i64, cpu_env);
                         tcg_gen_qemu_st_i64(s->tmp1_i64, s->A0,
                                             s->mem_index, MO_LEQ);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                         break;
                     case 3:
                     default:
                         gen_helper_fist_ST0(s->tmp2_i32, cpu_env);
                         tcg_gen_qemu_st_i32(s->tmp2_i32, s->A0,
                                             s->mem_index, MO_LEUW);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                         break;
                     }
                     if ((op & 7) == 3)
@@ -6008,7 +6022,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 }
                 break;
             case 0x0c: /* fldenv mem */
-                gen_helper_fldenv(cpu_env, s->A0, tcg_const_i32(dflag - 1), tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_fldenv(cpu_env, s->A0, tcg_const_i32(dflag - 1) );
                 break;
             case 0x0d: /* fldcw mem */
                 tcg_gen_qemu_ld_i32(s->tmp2_i32, s->A0,
@@ -6023,16 +6037,17 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 gen_helper_fnstcw(s->tmp2_i32, cpu_env);
                 tcg_gen_qemu_st_i32(s->tmp2_i32, s->A0,
                                     s->mem_index, MO_LEUW);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                 break;
             case 0x1d: /* fldt mem */
-                gen_helper_fldt_ST0(cpu_env, s->A0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_fldt_ST0(cpu_env, s->A0 );
                 break;
             case 0x1f: /* fstpt mem */
                 gen_helper_fstt_ST0(cpu_env, s->A0);
                 gen_helper_fpop(cpu_env);
                 break;
             case 0x2c: /* frstor mem */
-                gen_helper_frstor(cpu_env, s->A0, tcg_const_i32(dflag - 1), tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_frstor(cpu_env, s->A0, tcg_const_i32(dflag - 1) );
                 break;
             case 0x2e: /* fnsave mem */
                 gen_helper_fsave(cpu_env, s->A0, tcg_const_i32(dflag - 1));
@@ -6041,9 +6056,10 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 gen_helper_fnstsw(s->tmp2_i32, cpu_env);
                 tcg_gen_qemu_st_i32(s->tmp2_i32, s->A0,
                                     s->mem_index, MO_LEUW);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                 break;
             case 0x3c: /* fbld */
-                gen_helper_fbld_ST0(cpu_env, s->A0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_fbld_ST0(cpu_env, s->A0 );
                 break;
             case 0x3e: /* fbstp */
                 gen_helper_fbst_ST0(cpu_env, s->A0);
@@ -6057,6 +6073,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             case 0x3f: /* fistpll */
                 gen_helper_fistll_ST0(s->tmp1_i64, cpu_env);
                 tcg_gen_qemu_st_i64(s->tmp1_i64, s->A0, s->mem_index, MO_LEQ);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                 gen_helper_fpop(cpu_env);
                 break;
             default:
@@ -6562,7 +6579,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             gen_update_cc_op(s);
             gen_jmp_im(s, pc_start - s->cs_base);
             gen_helper_lret_protected(cpu_env, tcg_const_i32(dflag - 1),
-                                      tcg_const_i32(val), tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                                      tcg_const_i32(val) );
         } else {
             gen_stack_A0(s);
             /* pop offset */
@@ -6586,18 +6603,18 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
         gen_svm_check_intercept(s, pc_start, SVM_EXIT_IRET);
         if (!s->pe) {
             /* real mode */
-            gen_helper_iret_real(cpu_env, tcg_const_i32(dflag - 1), tcg_const_i64(num_ins), tcg_const_i64(num_op));
+            gen_helper_iret_real(cpu_env, tcg_const_i32(dflag - 1) );
             set_cc_op(s, CC_OP_EFLAGS);
         } else if (s->vm86) {
             if (s->iopl != 3) {
                 gen_exception(s, EXCP0D_GPF, pc_start - s->cs_base);
             } else {
-                gen_helper_iret_real(cpu_env, tcg_const_i32(dflag - 1), tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_iret_real(cpu_env, tcg_const_i32(dflag - 1) );
                 set_cc_op(s, CC_OP_EFLAGS);
             }
         } else {
             gen_helper_iret_protected(cpu_env, tcg_const_i32(dflag - 1),
-                                      tcg_const_i32(s->pc - s->cs_base), tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                                      tcg_const_i32(s->pc - s->cs_base) );
             set_cc_op(s, CC_OP_EFLAGS);
         }
         gen_eob(s);
@@ -7140,9 +7157,9 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
         gen_lea_modrm(env, s, modrm);
         tcg_gen_trunc_tl_i32(s->tmp2_i32, s->T0);
         if (ot == MO_16) {
-            gen_helper_boundw(cpu_env, s->A0, s->tmp2_i32, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+            gen_helper_boundw(cpu_env, s->A0, s->tmp2_i32 );
         } else {
-            gen_helper_boundl(cpu_env, s->A0, s->tmp2_i32, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+            gen_helper_boundl(cpu_env, s->A0, s->tmp2_i32 );
         }
         break;
     case 0x1c8 ... 0x1cf: /* bswap reg */
@@ -7331,7 +7348,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 gen_svm_check_intercept(s, pc_start, SVM_EXIT_LDTR_WRITE);
                 gen_ldst_modrm(env, s, modrm, MO_16, OR_TMP0, 0);
                 tcg_gen_trunc_tl_i32(s->tmp2_i32, s->T0);
-                gen_helper_lldt(cpu_env, s->tmp2_i32, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_lldt(cpu_env, s->tmp2_i32 );
             }
             break;
         case 1: /* str */
@@ -7352,7 +7369,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 gen_svm_check_intercept(s, pc_start, SVM_EXIT_TR_WRITE);
                 gen_ldst_modrm(env, s, modrm, MO_16, OR_TMP0, 0);
                 tcg_gen_trunc_tl_i32(s->tmp2_i32, s->T0);
-                gen_helper_ltr(cpu_env, s->tmp2_i32, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_ltr(cpu_env, s->tmp2_i32 );
             }
             break;
         case 4: /* verr */
@@ -7362,9 +7379,9 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             gen_ldst_modrm(env, s, modrm, MO_16, OR_TMP0, 0);
             gen_update_cc_op(s);
             if (op == 4) {
-                gen_helper_verr(cpu_env, s->T0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_verr(cpu_env, s->T0 );
             } else {
-                gen_helper_verw(cpu_env, s->T0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_verw(cpu_env, s->T0 );
             }
             set_cc_op(s, CC_OP_EFLAGS);
             break;
@@ -7799,9 +7816,9 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             t0 = tcg_temp_local_new();
             gen_update_cc_op(s);
             if (b == 0x102) {
-                gen_helper_lar(t0, cpu_env, s->T0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_lar(t0, cpu_env, s->T0 );
             } else {
-                gen_helper_lsl(t0, cpu_env, s->T0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_lsl(t0, cpu_env, s->T0 );
             }
             tcg_gen_andi_tl(s->tmp0, cpu_cc_src, CC_Z);
             label1 = gen_new_label();
@@ -7912,11 +7929,11 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                     tcg_gen_movi_tl(s->T0, 0);
                 }
                 if (CODE64(s)) {
-                    gen_helper_bndldx64(cpu_bndl[reg], cpu_env, s->A0, s->T0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                    gen_helper_bndldx64(cpu_bndl[reg], cpu_env, s->A0, s->T0 );
                     tcg_gen_ld_i64(cpu_bndu[reg], cpu_env,
                                    offsetof(CPUX86State, mmx_t0.MMX_Q(0)));
                 } else {
-                    gen_helper_bndldx32(cpu_bndu[reg], cpu_env, s->A0, s->T0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                    gen_helper_bndldx32(cpu_bndu[reg], cpu_env, s->A0, s->T0 );
                     tcg_gen_ext32u_i64(cpu_bndl[reg], cpu_bndu[reg]);
                     tcg_gen_shri_i64(cpu_bndu[reg], cpu_bndu[reg], 32);
                 }
@@ -7985,15 +8002,19 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                     if (CODE64(s)) {
                         tcg_gen_qemu_st_i64(cpu_bndl[reg], s->A0,
                                             s->mem_index, MO_LEQ);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                         tcg_gen_addi_tl(s->A0, s->A0, 8);
                         tcg_gen_qemu_st_i64(cpu_bndu[reg], s->A0,
                                             s->mem_index, MO_LEQ);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                     } else {
                         tcg_gen_qemu_st_i64(cpu_bndl[reg], s->A0,
                                             s->mem_index, MO_LEUL);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                         tcg_gen_addi_tl(s->A0, s->A0, 4);
                         tcg_gen_qemu_st_i64(cpu_bndu[reg], s->A0,
                                             s->mem_index, MO_LEUL);
+                        gen_helper_std(cpu_env, s->A0, tcg_const_i64(num_ins));
                     }
                 }
             } else if (mod != 3) {
@@ -8018,10 +8039,10 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 }
                 if (CODE64(s)) {
                     gen_helper_bndstx64(cpu_env, s->A0, s->T0,
-                                        cpu_bndl[reg], cpu_bndu[reg], tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                                        cpu_bndl[reg], cpu_bndu[reg] );
                 } else {
                     gen_helper_bndstx32(cpu_env, s->A0, s->T0,
-                                        cpu_bndl[reg], cpu_bndu[reg], tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                                        cpu_bndl[reg], cpu_bndu[reg] );
                 }
             }
         }
@@ -8170,7 +8191,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 break;
             }
             gen_lea_modrm(env, s, modrm);
-            gen_helper_fxrstor(cpu_env, s->A0, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+            gen_helper_fxrstor(cpu_env, s->A0 );
             break;
 
         CASE_MODRM_MEM_OP(2): /* ldmxcsr */
@@ -8209,7 +8230,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             gen_lea_modrm(env, s, modrm);
             tcg_gen_concat_tl_i64(s->tmp1_i64, cpu_regs[R_EAX],
                                   cpu_regs[R_EDX]);
-            gen_helper_xsave(cpu_env, s->A0, s->tmp1_i64, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+            gen_helper_xsave(cpu_env, s->A0, s->tmp1_i64 );
             break;
 
         CASE_MODRM_MEM_OP(5): /* xrstor */
@@ -8221,7 +8242,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             gen_lea_modrm(env, s, modrm);
             tcg_gen_concat_tl_i64(s->tmp1_i64, cpu_regs[R_EAX],
                                   cpu_regs[R_EDX]);
-            gen_helper_xrstor(cpu_env, s->A0, s->tmp1_i64, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+            gen_helper_xrstor(cpu_env, s->A0, s->tmp1_i64 );
             /* XRSTOR is how MPX is enabled, which changes how
                we translate.  Thus we need to end the TB.  */
             gen_update_cc_op(s);
@@ -8249,7 +8270,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 gen_lea_modrm(env, s, modrm);
                 tcg_gen_concat_tl_i64(s->tmp1_i64, cpu_regs[R_EAX],
                                       cpu_regs[R_EDX]);
-                gen_helper_xsaveopt(cpu_env, s->A0, s->tmp1_i64, tcg_const_i64(num_ins), tcg_const_i64(num_op));
+                gen_helper_xsaveopt(cpu_env, s->A0, s->tmp1_i64 );
             }
             break;
 
