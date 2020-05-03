@@ -26,6 +26,22 @@
 #include "qemu/atomic128.h"
 #include "tcg/tcg.h"
 
+void helper_ldd(CPUX86State *env, target_ulong a0)
+{
+
+    cpu_ldd_data(env, a0);
+
+}
+void helper_std(CPUX86State *env, target_ulong a0)
+{
+    cpu_std_data(env, a0);
+
+}
+void helper_count_ins(CPUX86State *env, uint64_t num)
+{
+    cpu_count_ins(env);
+
+}
 void helper_cmpxchg8b_unlocked(CPUX86State *env, target_ulong a0)
 {
     uintptr_t ra = GETPC();

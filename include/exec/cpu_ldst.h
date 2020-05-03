@@ -100,6 +100,9 @@ uint32_t cpu_ldl_data(CPUArchState *env, abi_ptr ptr);
 uint64_t cpu_ldq_data(CPUArchState *env, abi_ptr ptr);
 int cpu_ldsb_data(CPUArchState *env, abi_ptr ptr);
 int cpu_ldsw_data(CPUArchState *env, abi_ptr ptr);
+void cpu_ldd_data(CPUArchState *env, abi_ptr ptr);
+void cpu_std_data(CPUArchState *env, abi_ptr ptr);
+void cpu_count_ins(CPUArchState *env);
 
 uint32_t cpu_ldub_data_ra(CPUArchState *env, abi_ptr ptr, uintptr_t retaddr);
 uint32_t cpu_lduw_data_ra(CPUArchState *env, abi_ptr ptr, uintptr_t retaddr);

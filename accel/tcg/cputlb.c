@@ -79,6 +79,8 @@ QEMU_BUILD_BUG_ON(sizeof(target_ulong) > sizeof(run_on_cpu_data));
  */
 QEMU_BUILD_BUG_ON(NB_MMU_MODES > 16);
 #define ALL_MMUIDX_BITS ((1 << NB_MMU_MODES) - 1)
+static uint64_t num_g = 0;
+static uint64_t num_g_f = 0;
 
 static inline size_t tlb_n_entries(CPUTLBDescFast *fast)
 {
@@ -1503,6 +1505,25 @@ load_memop(const void *haddr, MemOp op)
     }
 }
 
+static inline void qemu_ram_addr_from_host_nofail_yy(CPUArchState *env, int read, void *ptr)
+{
+    ram_addr_t ram_addr;
+
+    ram_addr = qemu_ram_addr_from_host(ptr);
+    if (ram_addr == RAM_ADDR_INVALID) {
+    }
+    else
+    {
+        trace_memory_ldd(env_cpu(env)->cpu_index, read, ram_addr, num_g);
+        /*
+        FILE *fp;
+        fp = fopen("out", "a");
+        fprintf(fp, "%d %d %"PRIx64" %"PRIu64"\n", env_cpu(env)->cpu_index, read, ram_addr, num_g);
+        fclose(fp);
+        num_g = 0;
+        */
+    }
+}
 static inline uint64_t QEMU_ALWAYS_INLINE
 load_helper(CPUArchState *env, target_ulong addr, TCGMemOpIdx oi,
             uintptr_t retaddr, MemOp op, bool code_read,
@@ -1520,7 +1541,6 @@ load_helper(CPUArchState *env, target_ulong addr, TCGMemOpIdx oi,
     void *haddr;
     uint64_t res;
     size_t size = memop_size(op);
-
     /* Handle CPU specific unaligned behaviour */
     if (addr & ((1 << a_bits) - 1)) {
         cpu_unaligned_access(env_cpu(env), addr, access_type,
@@ -1539,11 +1559,12 @@ load_helper(CPUArchState *env, target_ulong addr, TCGMemOpIdx oi,
         tlb_addr = code_read ? entry->addr_code : entry->addr_read;
         tlb_addr &= ~TLB_INVALID_MASK;
     }
-
+    int flag = 0;
     /* Handle anything that isn't just a straight memory access.  */
     if (unlikely(tlb_addr & ~TARGET_PAGE_MASK)) {
         CPUIOTLBEntry *iotlbentry;
         bool need_swap;
+        flag = 1;
 
         /* For anything that is unaligned, recurse through full_load.  */
         if ((addr & (size - 1)) != 0) {
@@ -1563,12 +1584,12 @@ load_helper(CPUArchState *env, target_ulong addr, TCGMemOpIdx oi,
 
         /* Handle I/O access.  */
         if (likely(tlb_addr & TLB_MMIO)) {
+            flag = 2;
             return io_readx(env, iotlbentry, mmu_idx, addr, retaddr,
                             access_type, op ^ (need_swap * MO_BSWAP));
         }
 
         haddr = (void *)((uintptr_t)addr + entry->addend);
-
         /*
          * Keep these two load_memop separate to ensure that the compiler
          * is able to fold the entire function to a single instruction.
@@ -1605,6 +1626,11 @@ load_helper(CPUArchState *env, target_ulong addr, TCGMemOpIdx oi,
     }
 
     haddr = (void *)((uintptr_t)addr + entry->addend);
+        if(flag == 0 && !code_read)
+        {
+            if(num_g_f > 0x1017000000) 
+                qemu_ram_addr_from_host_nofail_yy(env, 1, haddr);
+        }
     return load_memop(haddr, op);
 }
 
@@ -1736,6 +1762,54 @@ tcg_target_ulong helper_be_ldsl_mmu(CPUArchState *env, target_ulong addr,
  * Load helpers for cpu_ldst.h.
  */
 
+void cpu_ldd_data(CPUArchState *env, abi_ptr addr)
+{
+    int mmu_idx = cpu_mmu_index(env, false);
+    //uintptr_t index = tlb_index(env, mmu_idx, addr);
+    CPUTLBEntry *entry = tlb_entry(env, mmu_idx, addr);
+    target_ulong tlb_addr = entry->addr_read;
+    if(!tlb_hit(tlb_addr, addr))
+    {
+    }
+    else
+    {
+    
+        if(num_g_f > 0x1017000000)
+        {
+        qemu_ram_addr_from_host_nofail_yy(env, 1, (void*)(addr+(entry->addend)));
+        num_g = 0;
+        }
+    }
+    
+}
+void cpu_std_data(CPUArchState *env, abi_ptr addr)
+{
+    int mmu_idx = cpu_mmu_index(env, false);
+    //uintptr_t index = tlb_index(env, mmu_idx, addr);
+    CPUTLBEntry *entry = tlb_entry(env, mmu_idx, addr);
+    target_ulong tlb_addr = entry->addr_read;
+    
+    if(!tlb_hit(tlb_addr, addr))
+    {
+        
+    }
+    else 
+    {
+        if(num_g_f > 0x1017000000)
+        {
+        qemu_ram_addr_from_host_nofail_yy(env, 0, (void*)(addr+(entry->addend)));
+        num_g = 0;
+        }
+    }
+    
+}
+void cpu_count_ins(CPUArchState *env)
+{
+
+    num_g ++;
+    num_g_f ++;
+
+}
 static inline uint64_t cpu_load_helper(CPUArchState *env, abi_ptr addr,
                                        int mmu_idx, uintptr_t retaddr,
                                        MemOp op, FullLoadHelper *full_load)
@@ -1928,11 +2002,12 @@ store_helper(CPUArchState *env, target_ulong addr, uint64_t val,
         tlb_addr = tlb_addr_write(entry) & ~TLB_INVALID_MASK;
     }
 
+    int flag = 0;
     /* Handle anything that isn't just a straight memory access.  */
     if (unlikely(tlb_addr & ~TARGET_PAGE_MASK)) {
         CPUIOTLBEntry *iotlbentry;
         bool need_swap;
-
+        flag = 1;
         /* For anything that is unaligned, recurse through byte stores.  */
         if ((addr & (size - 1)) != 0) {
             goto do_unaligned_access;
@@ -2047,6 +2122,11 @@ store_helper(CPUArchState *env, target_ulong addr, uint64_t val,
     }
 
     haddr = (void *)((uintptr_t)addr + entry->addend);
+        if(flag ==0)
+        {
+            if(num_g_f > 0x1017000000) 
+            qemu_ram_addr_from_host_nofail_yy(env, 0, haddr);
+        }
     store_memop(haddr, val, op);
 }
 
